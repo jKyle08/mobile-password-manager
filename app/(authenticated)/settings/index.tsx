@@ -14,6 +14,8 @@ import { useVaultStore } from '@/store/vault.store';
 import { useSettingsStore } from '@/store/settings.store';
 import {
   Shield,
+  ShieldCheck,
+  ShieldAlert,
   Palette,
   HardDrive,
   Info,
@@ -23,7 +25,9 @@ import {
   Timer,
   FileDown,
   FolderOpen,
+  Activity,
 } from 'lucide-react-native';
+import { VaultHealthService } from '@/security/vault-health.service';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -31,6 +35,17 @@ export default function SettingsScreen() {
   const { lockVault } = useAuthStore();
   const { credentials } = useVaultStore();
   const { settings } = useSettingsStore();
+
+  const healthReport = React.useMemo(() => {
+    return VaultHealthService.analyze(credentials);
+  }, [credentials]);
+
+  const scoreColor = React.useMemo(() => {
+    if (healthReport.score >= 85) return colors.success;
+    if (healthReport.score >= 70) return colors.secondary;
+    if (healthReport.score >= 50) return colors.warning;
+    return colors.destructive;
+  }, [healthReport.score, colors]);
 
   const handleLockNow = () => {
     lockVault();
@@ -45,6 +60,46 @@ export default function SettingsScreen() {
           SECURITY
         </Text>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <TouchableOpacity
+            style={[styles.row, { borderBottomColor: colors.surfaceBorder }]}
+            onPress={() => router.push('/(authenticated)/health')}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconBox, { backgroundColor: `${scoreColor}18` }]}>
+                {healthReport.totalVulnerabilitiesCount > 0 ? (
+                  <ShieldAlert size={18} color={scoreColor} />
+                ) : (
+                  <ShieldCheck size={18} color={colors.success} />
+                )}
+              </View>
+              <View>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>
+                  Vault Security Health & Audit
+                </Text>
+                <Text style={[styles.rowSubtitle, { color: colors.textMuted }]}>
+                  {healthReport.totalVulnerabilitiesCount === 0
+                    ? `Score: ${healthReport.score}% • Grade ${healthReport.grade}`
+                    : `${healthReport.score}% Score • ${healthReport.totalVulnerabilitiesCount} issues detected`}
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View
+                style={{
+                  paddingHorizontal: 7,
+                  paddingVertical: 2,
+                  borderRadius: 6,
+                  backgroundColor: `${scoreColor}20`,
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '700', color: scoreColor }}>
+                  {healthReport.score}%
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.textMuted} />
+            </View>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.row, { borderBottomColor: colors.surfaceBorder }]}
             onPress={() => router.push('/(authenticated)/settings/security')}

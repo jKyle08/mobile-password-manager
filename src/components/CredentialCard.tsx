@@ -1,13 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Credential } from '@/models/credential.model';
 import { useTheme } from '@/theme/ThemeContext';
 import { typography } from '@/theme/typography';
-import { Star, Copy, ExternalLink, KeyRound, Globe, User } from 'lucide-react-native';
+import { Star, ExternalLink, Lock, User, ChevronRight } from 'lucide-react-native';
 import { ClipboardService } from '@/security/clipboard.service';
 import { useToast } from './ui/Toast';
-import { Badge } from './ui/Badge';
-
 import { CategoryIcon, getCategoryColor } from './CategoryIcon';
 
 interface CredentialCardProps {
@@ -16,6 +14,7 @@ interface CredentialCardProps {
   categoryNames?: string[];
   onPress: () => void;
   onToggleFavorite: () => void;
+  onLaunchSite?: (credential: Credential) => void;
 }
 
 export const CredentialCard: React.FC<CredentialCardProps> = ({
@@ -24,6 +23,7 @@ export const CredentialCard: React.FC<CredentialCardProps> = ({
   categoryNames,
   onPress,
   onToggleFavorite,
+  onLaunchSite,
 }) => {
   const { colors } = useTheme();
   const { showToast } = useToast();
@@ -36,11 +36,26 @@ export const CredentialCard: React.FC<CredentialCardProps> = ({
     }
   };
 
-  const handleCopyPassword = async (e: any) => {
+  const handleLaunchWebsite = async (e: any) => {
     e.stopPropagation?.();
-    if (credential.password) {
-      await ClipboardService.copyWithAutoClear(credential.password, 30);
-      showToast('Password copied (clears in 30s)', 'success');
+    if (onLaunchSite) {
+      onLaunchSite(credential);
+      return;
+    }
+    if (!credential.website) return;
+    let url = credential.website.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        showToast('Invalid website URL', 'error');
+      }
+    } catch {
+      showToast('Could not open website', 'error');
     }
   };
 
@@ -135,10 +150,10 @@ export const CredentialCard: React.FC<CredentialCardProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Password & Quick Actions */}
+      {/* Footer: Protected Password representation & Launch / Go to Website action */}
       <View style={[styles.footer, { borderTopColor: colors.surfaceBorder }]}>
         <View style={styles.passwordMaskContainer}>
-          <KeyRound size={14} color={colors.textMuted} style={styles.keyIcon} />
+          <Lock size={13} color={colors.textMuted} style={styles.keyIcon} />
           <Text style={[styles.maskedPassword, { color: colors.textMuted }]}>
             ••••••••••••
           </Text>
@@ -152,18 +167,36 @@ export const CredentialCard: React.FC<CredentialCardProps> = ({
               style={[styles.miniBtn, { backgroundColor: colors.surfaceSubtle }]}
               accessibilityLabel="Copy username"
             >
-              <User size={14} color={colors.textSecondary} />
+              <User size={13} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleCopyPassword}
-            style={[styles.miniBtn, { backgroundColor: colors.surfaceSubtle }]}
-            accessibilityLabel="Copy password"
-          >
-            <Copy size={14} color={colors.primary} />
-          </TouchableOpacity>
+          {credential.website ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleLaunchWebsite}
+              style={[
+                styles.launchBtn,
+                {
+                  backgroundColor: `${colors.primary}15`,
+                  borderColor: `${colors.primary}30`,
+                },
+              ]}
+              accessibilityLabel="Go to website"
+            >
+              <Text style={[styles.launchBtnText, { color: colors.primary }]}>
+                Go to Site
+              </Text>
+              <ExternalLink size={12} color={colors.primary} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.detailsHint}>
+              <Text style={[styles.detailsHintText, { color: colors.textMuted }]}>
+                Details
+              </Text>
+              <ChevronRight size={13} color={colors.textMuted} />
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -257,6 +290,7 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   miniBtn: {
@@ -264,5 +298,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  launchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  launchBtnText: {
+    fontSize: 11,
+    fontWeight: typography.weights.semibold,
+  },
+  detailsHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  detailsHintText: {
+    fontSize: 11,
+    fontWeight: typography.weights.medium,
   },
 });

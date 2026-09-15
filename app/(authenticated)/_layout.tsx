@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
 import { useTheme } from '@/theme/ThemeContext';
+import { AutoLockWatcher } from '@/components/AutoLockWatcher';
 
 export default function AuthenticatedLayout() {
   const router = useRouter();
@@ -19,28 +20,31 @@ export default function AuthenticatedLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: colors.background,
-        },
-        headerTintColor: colors.text,
-        headerShadowVisible: false,
-        contentStyle: {
-          backgroundColor: colors.background,
-        },
-      }}
-    >
-      <Stack.Screen name="vault" options={{ headerShown: false }} />
-      <Stack.Screen name="credentials/add" options={{ title: 'Add Account', headerBackTitle: 'Vault' }} />
-      <Stack.Screen name="credentials/[id]" options={{ title: 'Account Details', headerBackTitle: 'Vault' }} />
-      <Stack.Screen name="credentials/edit" options={{ title: 'Edit Account', headerBackTitle: 'Details' }} />
-      <Stack.Screen name="generator" options={{ title: 'Password Generator' }} />
-      <Stack.Screen name="categories" options={{ title: 'Categories' }} />
-      <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
-      <Stack.Screen name="settings/security" options={{ title: 'Security' }} />
-      <Stack.Screen name="settings/backup" options={{ title: 'Encrypted Backup' }} />
-      <Stack.Screen name="settings/appearance" options={{ title: 'Appearance' }} />
-    </Stack>
+    <AutoLockWatcher>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+        }}
+      >
+        <Stack.Screen name="vault" options={{ headerShown: false }} />
+        <Stack.Screen name="credentials/add" options={{ title: 'Add Account', headerBackTitle: 'Vault' }} />
+        <Stack.Screen name="credentials/[id]" options={{ title: 'Account Details', headerBackTitle: 'Vault' }} />
+        <Stack.Screen name="credentials/edit" options={{ title: 'Edit Account', headerBackTitle: 'Details' }} />
+        <Stack.Screen name="generator" options={{ title: 'Password Generator' }} />
+        <Stack.Screen name="health" options={{ title: 'Vault Security Health', headerBackTitle: 'Vault' }} />
+        <Stack.Screen name="categories" options={{ title: 'Categories' }} />
+        <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
+        <Stack.Screen name="settings/security" options={{ title: 'Security' }} />
+        <Stack.Screen name="settings/backup" options={{ title: 'Encrypted Backup' }} />
+        <Stack.Screen name="settings/appearance" options={{ title: 'Appearance' }} />
+      </Stack>
+    </AutoLockWatcher>
   );
 }

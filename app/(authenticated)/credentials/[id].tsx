@@ -30,7 +30,13 @@ import {
   Edit3,
   Calendar,
   Check,
+  ShieldCheck,
+  AlertTriangle,
+  Layers,
+  Clock,
+  Sparkles,
 } from 'lucide-react-native';
+import { VaultHealthService } from '@/security/vault-health.service';
 
 export default function CredentialDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,6 +49,12 @@ export default function CredentialDetailScreen() {
   const { settings } = useSettingsStore();
 
   const credential = credentials.find((c) => c.id === id);
+
+  const healthAudit = React.useMemo(() => {
+    if (!credential) return null;
+    const report = VaultHealthService.analyze(credentials);
+    return report.auditMap[credential.id] || null;
+  }, [credentials, credential]);
 
   const [isPasswordRevealed, setIsPasswordRevealed] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -242,6 +254,67 @@ export default function CredentialDetailScreen() {
           </View>
         </View>
 
+        {/* Security Audit Badge / Box */}
+        {healthAudit && (
+          <View
+            style={[
+              styles.securityAuditBox,
+              {
+                backgroundColor: healthAudit.isSafe ? `${colors.success}10` : `${colors.warning}10`,
+                borderColor: healthAudit.isSafe ? `${colors.success}30` : `${colors.warning}30`,
+              },
+            ]}
+          >
+            <View style={styles.securityAuditHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {healthAudit.isSafe ? (
+                  <ShieldCheck size={16} color={colors.success} />
+                ) : (
+                  <AlertTriangle size={16} color={colors.warning} />
+                )}
+                <Text
+                  style={[
+                    styles.securityAuditTitle,
+                    { color: healthAudit.isSafe ? colors.success : colors.warning },
+                  ]}
+                >
+                  {healthAudit.isSafe ? 'Security Status: Strong & Unique' : 'Security Alert: Attention Needed'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => router.push('/(authenticated)/health')}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+              >
+                <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '600' }}>
+                  Vault Audit
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {healthAudit.issues.map((issue, idx) => (
+              <Text key={idx} style={[styles.securityAuditIssue, { color: colors.textSecondary }]}>
+                • {issue}
+              </Text>
+            ))}
+
+            {!healthAudit.isSafe && (
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: '/(authenticated)/credentials/edit',
+                    params: { id: credential.id },
+                  })
+                }
+                style={[styles.securityFixBtn, { backgroundColor: colors.primary }]}
+              >
+                <Sparkles size={13} color="#FFFFFF" />
+                <Text style={styles.securityFixBtnText}>Update to Strong Password</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* Website Row */}
         {credential.website && (
           <View style={[styles.detailCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -429,6 +502,41 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  securityAuditBox: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  securityAuditHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  securityAuditTitle: {
+    fontSize: 13,
+    fontWeight: typography.weights.bold,
+  },
+  securityAuditIssue: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 2,
+  },
+  securityFixBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  securityFixBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: typography.weights.semibold,
   },
   metaRow: {
     flexDirection: 'row',

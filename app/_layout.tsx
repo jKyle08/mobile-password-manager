@@ -3,7 +3,6 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 import { ToastProvider } from '@/components/ui/Toast';
-import { AutoLockWatcher } from '@/components/AutoLockWatcher';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function NavigationStack() {
@@ -39,9 +38,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <ToastProvider>
-          <AutoLockWatcher>
-            <NavigationStack />
-          </AutoLockWatcher>
+          <NavigationStack />
         </ToastProvider>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -16,15 +16,22 @@ import { useVaultStore } from '@/store/vault.store';
 import { useCategoryStore } from '@/store/category.store';
 import { CredentialCard } from '@/components/CredentialCard';
 import { CategoryChipGroup } from '@/components/CategoryChip';
+import { AutoFillModal } from '@/components/AutoFillModal';
+import { Credential } from '@/models/credential.model';
 import {
   Search,
   Plus,
   Settings,
   ShieldCheck,
+  ShieldAlert,
   Lock,
   Sparkles,
   FolderOpen,
+  Activity,
+  ChevronRight,
+  AlertTriangle,
 } from 'lucide-react-native';
+import { VaultHealthService } from '@/security/vault-health.service';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function VaultScreen() {
@@ -43,6 +50,7 @@ export default function VaultScreen() {
   } = useVaultStore();
 
   const { categories, loadCategories } = useCategoryStore();
+  const [autoFillCred, setAutoFillCred] = React.useState<Credential | null>(null);
 
   useEffect(() => {
     if (sessionKey) {
@@ -63,6 +71,17 @@ export default function VaultScreen() {
     categories.forEach((cat) => map.set(cat.id, cat.name));
     return map;
   }, [categories]);
+
+  const healthReport = useMemo(() => {
+    return VaultHealthService.analyze(credentials);
+  }, [credentials]);
+
+  const healthScoreColor = useMemo(() => {
+    if (healthReport.score >= 85) return colors.success;
+    if (healthReport.score >= 70) return colors.secondary;
+    if (healthReport.score >= 50) return colors.warning;
+    return colors.destructive;
+  }, [healthReport.score, colors]);
 
   // Filter credentials by category and search query
   const filteredCredentials = useMemo(() => {
@@ -117,6 +136,29 @@ export default function VaultScreen() {
 
         <View style={styles.headerActions}>
           <TouchableOpacity
+            onPress={() => router.push('/(authenticated)/health')}
+            style={[
+              styles.headerIconBtn,
+              { backgroundColor: colors.surfaceSubtle, position: 'relative' },
+            ]}
+            accessibilityLabel="Vault Security Health"
+          >
+            {healthReport.totalVulnerabilitiesCount > 0 ? (
+              <ShieldAlert size={20} color={healthScoreColor} />
+            ) : (
+              <ShieldCheck size={20} color={colors.success} />
+            )}
+            {healthReport.totalVulnerabilitiesCount > 0 && (
+              <View
+                style={[
+                  styles.headerBadgeDot,
+                  { backgroundColor: healthScoreColor },
+                ]}
+              />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={() => router.push('/(authenticated)/generator')}
             style={[styles.headerIconBtn, { backgroundColor: colors.surfaceSubtle }]}
             accessibilityLabel="Password Generator"
@@ -144,6 +186,75 @@ export default function VaultScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Security Health Mini Banner (when credentials exist) */}
+      {credentials.length > 0 && (
+        <View style={styles.healthBannerWrapper}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push('/(authenticated)/health')}
+            style={[
+              styles.healthBanner,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <View style={styles.healthBannerLeft}>
+              <View
+                style={[
+                  styles.healthScorePill,
+                  {
+                    backgroundColor: `${healthScoreColor}18`,
+                    borderColor: healthScoreColor,
+                  },
+                ]}
+              >
+                <Text style={[styles.healthScorePillText, { color: healthScoreColor }]}>
+                  {healthReport.score}%
+                </Text>
+              </View>
+              <View style={styles.healthBannerTextContainer}>
+                <View style={styles.healthBannerTitleRow}>
+                  <Text style={[styles.healthBannerTitle, { color: colors.text }]}>
+                    Vault Health: {healthReport.statusLabel}
+                  </Text>
+                  {healthReport.totalVulnerabilitiesCount > 0 && (
+                    <View
+                      style={[
+                        styles.warningCountBadge,
+                        { backgroundColor: `${colors.destructive}20` },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.warningCountBadgeText,
+                          { color: colors.destructive },
+                        ]}
+                      >
+                        {healthReport.totalVulnerabilitiesCount} issues
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.healthBannerSubtitle, { color: colors.textMuted }]}>
+                  {healthReport.totalVulnerabilitiesCount === 0
+                    ? 'All passwords are strong & unique'
+                    : `${healthReport.reusedAccountsCount} reused • ${healthReport.weakIssues.length} weak • ${healthReport.oldIssues.length} stagnant`}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.healthBannerRight}>
+              <Text style={[styles.healthBannerActionText, { color: colors.primary }]}>
+                Audit
+              </Text>
+              <ChevronRight size={16} color={colors.primary} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Search Bar */}
       <View style={styles.searchSection}>
@@ -216,9 +327,18 @@ export default function VaultScreen() {
               categoryNames={categoryNames}
               onPress={() => router.push(`/(authenticated)/credentials/${item.id}`)}
               onToggleFavorite={() => toggleFavorite(item.id)}
+              onLaunchSite={(cred) => setAutoFillCred(cred)}
             />
           );
         }}
+      />
+
+      {/* Quick AutoFill & Login Assistant Modal */}
+      <AutoFillModal
+        visible={Boolean(autoFillCred)}
+        credential={autoFillCred}
+        allCredentials={credentials}
+        onClose={() => setAutoFillCred(null)}
       />
 
       {/* Floating Action Button */}
@@ -273,6 +393,79 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerBadgeDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  healthBannerWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  healthBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  healthBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  healthScorePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    marginRight: 10,
+  },
+  healthScorePillText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  healthBannerTextContainer: {
+    flex: 1,
+  },
+  healthBannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  healthBannerTitle: {
+    fontSize: 13,
+    fontWeight: typography.weights.bold,
+  },
+  warningCountBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  warningCountBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  healthBannerSubtitle: {
+    fontSize: 11,
+  },
+  healthBannerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  healthBannerActionText: {
+    fontSize: 12,
+    fontWeight: typography.weights.semibold,
   },
   searchSection: {
     paddingHorizontal: 16,

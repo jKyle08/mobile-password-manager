@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useRootNavigationState } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
 import { useTheme } from '@/theme/ThemeContext';
 
 export default function IndexScreen() {
   const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
   const { colors } = useTheme();
   const { isInitialized, isUnlocked, isLoading, checkVaultStatus } = useAuthStore();
 
@@ -14,6 +15,8 @@ export default function IndexScreen() {
   }, []);
 
   useEffect(() => {
+    // Wait until root navigator is fully mounted
+    if (!rootNavigationState?.key) return;
     if (isLoading) return;
 
     if (!isInitialized) {
@@ -23,7 +26,7 @@ export default function IndexScreen() {
     } else {
       router.replace('/(authenticated)/vault');
     }
-  }, [isInitialized, isUnlocked, isLoading]);
+  }, [rootNavigationState?.key, isInitialized, isUnlocked, isLoading]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

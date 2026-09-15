@@ -20,7 +20,7 @@ import { StrengthMeter } from '@/components/StrengthMeter';
 import { Button } from '@/components/ui/Button';
 import { PasswordStrengthService } from '@/security/password-strength';
 import { AutoLockTimeout } from '@/models/settings.model';
-import { ShieldAlert, Fingerprint, Lock, Check } from 'lucide-react-native';
+import { ShieldAlert, Fingerprint, Lock, Check, Sparkles } from 'lucide-react-native';
 
 const AUTO_LOCK_OPTIONS: { label: string; value: AutoLockTimeout }[] = [
   { label: 'Immediately', value: 'immediately' },
@@ -239,6 +239,47 @@ export default function SecuritySettingsScreen() {
           )}
         </View>
 
+        {/* System AutoFill Guide */}
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+          SYSTEM AUTOFILL & QUICK LOGIN
+        </Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder, padding: 16 }]}>
+          <View style={styles.autoFillIntroRow}>
+            <View style={[styles.iconBox, { backgroundColor: `${colors.primary}20`, marginRight: 12 }]}>
+              <Sparkles size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>
+                1-Tap AutoFill Integration
+              </Text>
+              <Text style={[styles.rowSubtitle, { color: colors.textMuted }]}>
+                Fill credentials seamlessly in browsers and apps
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.stepItem, { borderTopColor: colors.surfaceBorder }]}>
+            <Text style={[styles.stepNumber, { color: colors.primary }]}>1.</Text>
+            <Text style={[styles.stepText, { color: colors.textSecondary }]}>
+              <Text style={{ fontWeight: typography.weights.bold, color: colors.text }}>In-App Launch & Fill:</Text> Tap "Go to Site" on any account card to immediately open the login page and securely copy your credentials.
+            </Text>
+          </View>
+
+          <View style={[styles.stepItem, { borderTopColor: colors.surfaceBorder }]}>
+            <Text style={[styles.stepNumber, { color: colors.primary }]}>2.</Text>
+            <Text style={[styles.stepText, { color: colors.textSecondary }]}>
+              <Text style={{ fontWeight: typography.weights.bold, color: colors.text }}>iOS AutoFill Setup:</Text> Open device Settings → Passwords → Password Options → Turn on AutoFill Passwords.
+            </Text>
+          </View>
+
+          <View style={[styles.stepItem, { borderTopColor: colors.surfaceBorder }]}>
+            <Text style={[styles.stepNumber, { color: colors.primary }]}>3.</Text>
+            <Text style={[styles.stepText, { color: colors.textSecondary }]}>
+              <Text style={{ fontWeight: typography.weights.bold, color: colors.text }}>Android AutoFill Setup:</Text> Open device Settings → System / Passwords & Accounts → Autofill Service.
+            </Text>
+          </View>
+        </View>
+
         {/* Lock Vault Now */}
         <View style={{ marginTop: 24 }}>
           <Button
@@ -345,5 +386,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 16,
+  },
+  autoFillIntroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  stepNumber: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+  },
+  stepText: {
+    fontSize: typography.sizes.xs,
+    lineHeight: 18,
+    flex: 1,
   },
 });
