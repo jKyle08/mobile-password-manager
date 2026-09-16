@@ -30,6 +30,9 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 
+import { AutofillService } from '@/services/autofill/autofill.service';
+import { UriMatcherService } from '@/services/autofill/uri-matcher.service';
+
 interface AutoFillModalProps {
   visible: boolean;
   credential: Credential | null;
@@ -62,23 +65,32 @@ export const AutoFillModal: React.FC<AutoFillModalProps> = ({
 
   const activeCred = selectedCred || credential;
 
-  // Find all accounts that match the same website domain or title
+  // Find all accounts that match the same website domain, URI, or title
   const matchingAccounts = useMemo(() => {
     if (!activeCred) return [];
-    const targetUrl = (activeCred.website || '').toLowerCase().trim();
-    const targetTitle = activeCred.title.toLowerCase().trim();
+    const targetUrl = activeCred.website || '';
+    if (targetUrl) {
+      const matches = AutofillService.findMatchingCredentials(
+        targetUrl,
+        allCredentials,
+        settings.defaultUriMatchType || 'domain'
+      );
+      if (matches.length > 0) {
+        // Ensure activeCred is in the list
+        if (!matches.some((m) => m.id === activeCred.id)) {
+          matches.unshift(activeCred);
+        }
+        return matches;
+      }
+    }
 
+    // Fallback match by title
+    const targetTitle = activeCred.title.toLowerCase().trim();
     return allCredentials.filter((c) => {
       if (c.id === activeCred.id) return true;
-      const cUrl = (c.website || '').toLowerCase().trim();
-      const cTitle = c.title.toLowerCase().trim();
-
-      if (targetUrl && cUrl && (targetUrl.includes(cUrl) || cUrl.includes(targetUrl))) {
-        return true;
-      }
-      return cTitle === targetTitle;
+      return c.title.toLowerCase().trim() === targetTitle;
     });
-  }, [activeCred, allCredentials]);
+  }, [activeCred, allCredentials, settings.defaultUriMatchType]);
 
   if (!activeCred) return null;
 

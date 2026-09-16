@@ -42,6 +42,7 @@ export default function AuthenticatedLayout() {
         <Stack.Screen name="categories" options={{ title: 'Categories' }} />
         <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
         <Stack.Screen name="settings/security" options={{ title: 'Security' }} />
+        <Stack.Screen name="settings/autofill" options={{ title: 'Autofill & Logins', headerBackTitle: 'Settings' }} />
         <Stack.Screen name="settings/backup" options={{ title: 'Encrypted Backup' }} />
         <Stack.Screen name="settings/appearance" options={{ title: 'Appearance' }} />
       </Stack>

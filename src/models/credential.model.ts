@@ -1,3 +1,11 @@
+export type UriMatchType = 'domain' | 'host' | 'exact';
+
+export interface CredentialUri {
+  id?: string;
+  uri: string;
+  matchType?: UriMatchType;
+}
+
 export interface CustomField {
   id: string;
   label: string;
@@ -11,6 +19,7 @@ export interface Credential {
   username?: string;
   password: string;
   website?: string;
+  uris?: CredentialUri[];
   notes?: string;
   categoryId?: string;
   categoryIds?: string[];
@@ -23,13 +32,14 @@ export interface Credential {
 
 /**
  * Payload encrypted into SQLite
- * Plaintext password, username, website, notes, and custom fields
+ * Plaintext password, username, website, URIs, notes, and custom fields
  * are sealed inside ciphertext with AES-256-GCM.
  */
 export interface EncryptedCredentialPayload {
   username?: string;
   password: string;
   website?: string;
+  uris?: CredentialUri[];
   notes?: string;
   tags?: string[];
   customFields?: CustomField[];

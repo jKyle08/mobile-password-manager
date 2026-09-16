@@ -26,6 +26,7 @@ import {
   FileDown,
   FolderOpen,
   Activity,
+  Sparkles,
 } from 'lucide-react-native';
 import { VaultHealthService } from '@/security/vault-health.service';
 
@@ -129,6 +130,26 @@ export default function SettingsScreen() {
                 </Text>
                 <Text style={[styles.rowSubtitle, { color: colors.textMuted }]}>
                   {settings.biometricEnabled ? 'Enabled' : 'Disabled'}
+                </Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.row, { borderBottomColor: colors.surfaceBorder }]}
+            onPress={() => router.push('/(authenticated)/settings/autofill')}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconBox, { backgroundColor: `${colors.accent}20` }]}>
+                <Sparkles size={18} color={colors.accent} />
+              </View>
+              <View>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>
+                  Autofill & Logins
+                </Text>
+                <Text style={[styles.rowSubtitle, { color: colors.textMuted }]}>
+                  {settings.autofillEnabled ? 'Enabled • In-App & Browser Assistant' : 'Disabled'}
                 </Text>
               </View>
             </View>

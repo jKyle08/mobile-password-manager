@@ -13,6 +13,7 @@ interface SettingsState {
   updateAutoLock: (timeout: AutoLockTimeout) => Promise<void>;
   toggleBiometrics: (enabled: boolean, sessionKey?: Uint8Array) => Promise<boolean>;
   updateClipboardTimeout: (seconds: number) => Promise<void>;
+  updateAutofillSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -31,6 +32,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         if (row.key === 'biometricEnabled') loaded.biometricEnabled = row.value === 'true';
         if (row.key === 'clipboardTimeoutSeconds') loaded.clipboardTimeoutSeconds = Number(row.value);
         if (row.key === 'hidePasswordRevealSeconds') loaded.hidePasswordRevealSeconds = Number(row.value);
+        if (row.key === 'autofillEnabled') loaded.autofillEnabled = row.value === 'true';
+        if (row.key === 'autofillRequireAuth') loaded.autofillRequireAuth = row.value === 'true';
+        if (row.key === 'autofillUsername') loaded.autofillUsername = row.value === 'true';
+        if (row.key === 'autofillPassword') loaded.autofillPassword = row.value === 'true';
+        if (row.key === 'openAndFillEnabled') loaded.openAndFillEnabled = row.value === 'true';
+        if (row.key === 'defaultUriMatchType') loaded.defaultUriMatchType = row.value as any;
       }
 
       set({ settings: loaded, isLoading: false });
@@ -74,5 +81,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const db = await DatabaseService.getDatabase();
     await db.runAsync('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)', 'clipboardTimeoutSeconds', String(seconds));
     set((state) => ({ settings: { ...state.settings, clipboardTimeoutSeconds: seconds } }));
+  },
+
+  updateAutofillSetting: async (key, value) => {
+    const db = await DatabaseService.getDatabase();
+    await db.runAsync('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)', String(key), String(value));
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        [key]: value,
+      },
+    }));
   },
 }));

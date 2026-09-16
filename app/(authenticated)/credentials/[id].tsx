@@ -35,8 +35,15 @@ import {
   Layers,
   Clock,
   Sparkles,
+  Zap,
+  Globe,
+  KeyRound,
+  Fingerprint,
+  Landmark,
 } from 'lucide-react-native';
 import { VaultHealthService } from '@/security/vault-health.service';
+import { AutofillService } from '@/services/autofill/autofill.service';
+import { AutoFillModal } from '@/components/AutoFillModal';
 
 export default function CredentialDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -56,10 +63,28 @@ export default function CredentialDetailScreen() {
     return report.auditMap[credential.id] || null;
   }, [credentials, credential]);
 
+  const activeCatIds = credential?.categoryIds && credential.categoryIds.length > 0
+    ? credential.categoryIds
+    : (credential?.categoryId ? [credential.categoryId] : []);
+  const assignedCategories = categories.filter((c) => activeCatIds.includes(c.id));
+
+  const isFinanceOrBanking = React.useMemo(() => {
+    if (!credential) return false;
+    const inFinanceCat = assignedCategories.some(
+      (c) => c.id === 'cat-finance' || c.name.toLowerCase().includes('finance') || c.name.toLowerCase().includes('bank')
+    );
+    const titleMatch = /bank|chase|bofa|bdo|bpi|metrobank|unionbank|gcash|maya|paypal|fidelity|schwab|citi|capital\s*one/i.test(
+      credential.title
+    );
+    return inFinanceCat || titleMatch;
+  }, [credential, assignedCategories]);
+
   const [isPasswordRevealed, setIsPasswordRevealed] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showAutofillModal, setShowAutofillModal] = useState(false);
+  const [isProcessingOpenAndFill, setIsProcessingOpenAndFill] = useState(false);
 
   // Auto-hide revealed password after configurable seconds (default 10s)
   useEffect(() => {
@@ -86,11 +111,6 @@ export default function CredentialDetailScreen() {
     );
   }
 
-  const activeCatIds = credential.categoryIds && credential.categoryIds.length > 0
-    ? credential.categoryIds
-    : (credential.categoryId ? [credential.categoryId] : []);
-  const assignedCategories = categories.filter((c) => activeCatIds.includes(c.id));
-
   const handleCopy = async (text: string, fieldName: string) => {
     const ok = await ClipboardService.copyWithAutoClear(text, settings.clipboardTimeoutSeconds);
     if (ok) {
@@ -100,22 +120,44 @@ export default function CredentialDetailScreen() {
     }
   };
 
+  /**
+   * Action 1: Open Website
+   * Validates URL, opens in default browser without exposing password.
+   * If missing/invalid, displays clear error message.
+   */
   const handleOpenWebsite = async () => {
-    if (!credential.website) return;
-    let url = credential.website;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
+    const result = await AutofillService.openWebsite(credential.website);
+    if (!result.success) {
+      showToast(result.error || 'This account does not have a valid website URL.', 'error');
     }
+  };
+
+  /**
+   * Action 2: Open & Fill
+   * Validates URL, performs biometric auth, opens browser, and readies credentials in clipboard with auto-clear.
+   */
+  const handleOpenAndFill = async () => {
     try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
+      setIsProcessingOpenAndFill(true);
+      const result = await AutofillService.executeOpenAndFill(credential, settings);
+      if (result.success) {
+        showToast(
+          `Credentials ready! Clipboard will auto-clear in ${settings.clipboardTimeoutSeconds}s.`,
+          'success'
+        );
       } else {
-        showToast('Invalid website URL', 'error');
+        showToast(result.error || 'This account does not have a valid website URL.', 'error');
       }
-    } catch (e) {
-      showToast('Could not open link', 'error');
+    } finally {
+      setIsProcessingOpenAndFill(false);
     }
+  };
+
+  /**
+   * Action 3: Autofill / Account Selector Modal
+   */
+  const handleAutofill = () => {
+    setShowAutofillModal(true);
   };
 
   const handleDelete = async () => {
@@ -179,6 +221,67 @@ export default function CredentialDetailScreen() {
               fill={credential.favorite ? '#F59E0B' : 'transparent'}
             />
           </TouchableOpacity>
+        </View>
+
+        {/* Banking Security Banner */}
+        {isFinanceOrBanking && (
+          <View
+            style={[
+              styles.bankingBanner,
+              {
+                backgroundColor: `${colors.secondary}12`,
+                borderColor: `${colors.secondary}35`,
+              },
+            ]}
+          >
+            <View style={styles.bankingBannerHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Landmark size={16} color={colors.secondary} />
+                <Text style={[styles.bankingBannerTitle, { color: colors.secondary }]}>
+                  High-Security Banking & Finance Account
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.bankingBannerDesc, { color: colors.textSecondary }]}>
+              Protected by local AES-256-GCM encryption. Use <Text style={{ fontWeight: '700', color: colors.secondary }}>Open Website</Text> or <Text style={{ fontWeight: '700', color: colors.secondary }}>Open & Fill</Text> to access your bank securely without exposing your password.
+            </Text>
+          </View>
+        )}
+
+        {/* Autofill & Website Action Bar */}
+        <View style={[styles.quickActionsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.quickActionsTitle, { color: colors.textSecondary }]}>
+            CREDENTIAL ACTIONS
+          </Text>
+          <View style={styles.actionGrid}>
+            <TouchableOpacity
+              style={[styles.quickActionButton, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
+              onPress={handleOpenWebsite}
+              activeOpacity={0.7}
+            >
+              <Globe size={18} color={colors.primary} />
+              <Text style={[styles.quickActionText, { color: colors.primary }]}>Open Website</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickActionButton, { backgroundColor: `${colors.secondary}15`, borderColor: `${colors.secondary}30` }]}
+              onPress={handleAutofill}
+              activeOpacity={0.7}
+            >
+              <Fingerprint size={18} color={colors.secondary} />
+              <Text style={[styles.quickActionText, { color: colors.secondary }]}>Autofill</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickActionButton, { backgroundColor: `${colors.accent}15`, borderColor: `${colors.accent}30` }]}
+              onPress={handleOpenAndFill}
+              activeOpacity={0.7}
+              disabled={isProcessingOpenAndFill}
+            >
+              <Zap size={18} color={colors.accent} />
+              <Text style={[styles.quickActionText, { color: colors.accent }]}>Open & Fill</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Username Row */}
@@ -334,6 +437,27 @@ export default function CredentialDetailScreen() {
           </View>
         )}
 
+        {/* Additional URIs */}
+        {credential.uris && credential.uris.length > 0 && (
+          <View style={[styles.detailCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Additional Domains & Apps</Text>
+            {credential.uris.map((u, idx) => (
+              <View key={idx} style={[styles.uriItemRow, idx > 0 && { borderTopColor: colors.surfaceBorder, borderTopWidth: 1 }]}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={[styles.uriItemText, { color: colors.text }]} numberOfLines={1}>{u.uri}</Text>
+                  <Text style={[styles.uriItemMatch, { color: colors.textMuted }]}>Match: {u.matchType || 'domain'}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => AutofillService.openWebsite(u.uri)}
+                  style={[styles.actionIconBtn, { backgroundColor: colors.surfaceSubtle }]}
+                >
+                  <ExternalLink size={16} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Notes */}
         {credential.notes && (
           <View style={[styles.detailCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -370,6 +494,14 @@ export default function CredentialDetailScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* Autofill & Account Selection Modal */}
+      <AutoFillModal
+        visible={showAutofillModal}
+        credential={credential}
+        allCredentials={credentials}
+        onClose={() => setShowAutofillModal(false)}
+      />
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
@@ -454,6 +586,72 @@ const styles = StyleSheet.create({
   },
   favBtn: {
     padding: 8,
+  },
+  bankingBanner: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
+  },
+  bankingBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  bankingBannerTitle: {
+    fontSize: 13,
+    fontWeight: typography.weights.bold,
+  },
+  bankingBannerDesc: {
+    fontSize: typography.sizes.xs,
+    lineHeight: 18,
+  },
+  quickActionsCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
+  },
+  quickActionsTitle: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+  },
+  quickActionText: {
+    fontSize: 11,
+    fontWeight: typography.weights.bold,
+    textAlign: 'center',
+  },
+  uriItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  uriItemText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+  },
+  uriItemMatch: {
+    fontSize: 11,
+    marginTop: 2,
   },
   detailCard: {
     padding: 16,

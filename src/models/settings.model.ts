@@ -1,3 +1,5 @@
+import { UriMatchType } from './credential.model';
+
 export type ThemeMode = 'system' | 'light' | 'dark';
 
 export type AutoLockTimeout = 'immediately' | '1min' | '5min' | '15min' | '30min' | 'never';
@@ -8,6 +10,12 @@ export interface AppSettings {
   biometricEnabled: boolean;
   clipboardTimeoutSeconds: number; // e.g. 30 seconds
   hidePasswordRevealSeconds: number; // e.g. 10 seconds
+  autofillEnabled: boolean;
+  autofillRequireAuth: boolean;
+  autofillUsername: boolean;
+  autofillPassword: boolean;
+  openAndFillEnabled: boolean;
+  defaultUriMatchType: UriMatchType;
 }
 
 export const AUTO_LOCK_MS_MAP: Record<AutoLockTimeout, number> = {
@@ -25,4 +33,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   biometricEnabled: false,
   clipboardTimeoutSeconds: 30,
   hidePasswordRevealSeconds: 10,
+  autofillEnabled: true,
+  autofillRequireAuth: true,
+  autofillUsername: true,
+  autofillPassword: true,
+  openAndFillEnabled: true,
+  defaultUriMatchType: 'domain',
 };
